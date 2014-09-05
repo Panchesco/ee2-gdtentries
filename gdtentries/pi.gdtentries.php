@@ -63,9 +63,11 @@
 			public	$status				= array('open');
 			public	$order_by			= array('entry_date','title');
 			public	$sort				= array();
-			public	$total_results		= 0;
+			public	$total_rows			= 0;
 			public	$query_strings		= FALSE;
 			public	$tagdata;
+			public	$base_url			= '';
+			public	$display_pages		= TRUE;
 			
 			
 			private	$title_params		= array(
@@ -85,12 +87,22 @@
 			public function __construct()
 			{
 				
+				
+				
 				// Will we allow query strings?
 				$this->query_strings	= ee()->TMPL->fetch_param('query_strings',FALSE);
 				
 				// Fetch  limit and offset.
 				$this->limit	= ee()->TMPL->fetch_param('limit',1);
 				$this->offset	= ee()->TMPL->fetch_param('offset',0);
+				
+				if(ee()->TMPL->fetch_param('display_pages'))
+				{
+					if(strtoupper(ee()->TMPL->fetch_param('display_pages'))=='FALSE')
+					{
+						$this->display_pages = FALSE;
+					}	
+				};
 				
 				// Fetch the channel name
 				if(ee()->TMPL->fetch_param('channel_name'))
@@ -136,6 +148,7 @@
 				}
 				
 				// Now that we have the custom field names, look for additional parameters.
+				$i = 0;
 				foreach($this->field_data as $key=>$row)
 				{
 					
@@ -155,32 +168,49 @@
 					// Look in query string?
 					if($this->query_strings !== FALSE)
 					{
+					
+						if($i==0)
+						{
+							$this->base_url = ee()->functions->fetch_current_uri() . '?';
+						}
 						
 						if(ee()->input->get($row,TRUE))
 						{
 						    $this->field_params[$row] = ee()->input->get($row,TRUE);
+						    $this->base_url.= $row.'='.$this->field_params[$row].'&';
 						}
 						
-						if(ee()->input->get('limit'))
-						{
-							$this->limit	= ee()->input->get('limit');
-						}
 						
-						if(ee()->input->get('offset'))
-						{
-							$this->offset	= ee()->input->get('offset');
-						}
 
 					}
 					
+					$i++;	
 				}
+				
+				if($this->query_strings !== FALSE)
+				{
+					
+					if(ee()->input->get('limit'))
+					{
+							$this->limit	= ee()->input->get('limit');
+							$this->base_url.= 'limit='.$this->limit.'&';
+					}
+						
+					if(ee()->input->get('offset'))
+					{
+							$this->offset	= ee()->input->get('offset');
+							$this->base_url.= 'offset='.$this->offset.'&';
+					}
+				}
+				
+				
+				$this->base_url = trim($this->base_url,'&');
 				
 				// Set some properties.
 				$this->set_select();
 				$this->set_where();
-				$this->set_total_results();
+				$this->set_total_rows();
 				
-
 			}
 			
 			// ------------------------------------------------------------------------
@@ -189,14 +219,14 @@
 				 public function rows()
 				 {
 				 
-				 	if($this->total_results > 0)
+				 	if($this->total_rows > 0)
 				  	{
 
 				 		$data	= array();
 				 		$this->set_select();
 				 		$this->set_where();
 				 		
-				 		$this->select[]	=	'CONCAT(' . $this->total_results . ') AS total_rows';
+				 		$this->select[]	=	'CONCAT(' . $this->total_rows . ') AS total_rows';
 
 				 		ee()->db->from('channel_titles');
 				 		ee()->db->select($this->select);
@@ -225,10 +255,18 @@
 				  	
 						  			$query = ee()->db->get();
 						  			$rows	= $query->result_array();
+						  			$pagination = $this->paginate();
 						  			
+						  			$chunk	= $this->offset + $this->limit;
 						  			
-						  			
-						 return ee()->TMPL->parse_variables(ee()->TMPL->tagdata,$rows);
+						  			foreach($rows as $key => $row)
+						  			{
+							  			$rows[$key]['pagination']	= $pagination;
+							  			$rows[$key]['position']	= $this->offset + ($key+1);
+							  			$rows[$key]['end']		= ($chunk <= $this->total_rows) ? $chunk : $this->total_rows;
+						  			}
+
+						 return  ee()->TMPL->parse_variables(ee()->TMPL->tagdata,$rows);
 				  							  	
 				  	} else {
 					  	
@@ -236,6 +274,29 @@
 				  	}	
 				  	
 			}
+			
+			
+			/**
+			 * Pagination...
+			 */
+			 public function paginate()
+			 {
+				 
+				 
+				ee()->load->library('pagination');
+
+				$config['base_url'] = '/grants-and-awards/awards-db-table';
+				$config['total_rows'] = $this->total_rows;
+				$config['per_page']	= $this->limit;
+				$config['num_links']	= 6;
+
+				ee()->pagination->initialize($config);
+
+				return ee()->pagination->create_links();
+				
+			 }
+			
+
 			
 			// ------------------------------------------------------------------------
 
@@ -268,12 +329,13 @@
 					{year}
 					{month}
 					{day}
-					{order_by}			-	Pipe delimited list of vars to use as ORDER BY in query
-					{sort}				-	Pipe delimited list of ASC or DESC. Will work in tandem w/{order_by} values, but not required. Default is ASC.
-					{limit}				-	Default is 1
-					{offset}			-	Default is 0
+					{order_by}		-	Pipe delimited list of vars to use as ORDER BY in query
+					{sort}			-	Pipe delimited list of ASC or DESC. Will work in tandem w/{order_by} values, but not required. Default is ASC.
+					{limit}			-	Default is 1
+					{offset}		-	Default is 0
 					{query_strings}		-	Default is FALSE
 					{custom_field}		-	Use any custom field name.
+					{display_pages}		-	Show page numbers in pagination links? Default is TRUE.
 					
 					
 					VARIABLES: 
@@ -284,10 +346,13 @@
 					{year}
 					{month}
 					{day}	
-					{custom_field}	
-					{total_rows}
-					{count}
-					{total_results}			
+					{custom_field}
+					{count}				
+					{total_results}
+					{no_results}	
+					{total_rows}		- Total, unlimited set of rows
+					{position}		- Position number of row in all rows
+					{end}			- Last position number in current page of results
 					
 
 					<?php
@@ -439,7 +504,7 @@
 				  /**
 				   *	Set total results.
 				   */
-				   private function set_total_results()
+				   private function set_total_rows()
 				   {
 
 					   $query = ee()->db
@@ -451,14 +516,14 @@
 				  			->get();
 				  			
 				 
-				  			$this->total_results	= $query->num_rows();
+				  			$this->total_rows	= $query->num_rows();
 				 
 				 }
 				  			
 
 				 // ------------------------------------------------------------------------
 			
-			
+
 		
 	}
 /* End of file pi.gdtentries.php */
