@@ -56,17 +56,17 @@
 
 	class  Gdtentries {
 			
-			public	$site_id			= 1;
+			public	$site_id		= 1;
 			public	$channel_name		= 'awards-database';
-			public	$channel_id			= 8;
+			public	$channel_id		= 8;
 			public	$field_group		= 0;
-			public	$status				= array('open');
-			public	$order_by			= array('entry_date','title');
-			public	$sort				= array();
-			public	$total_rows			= 0;
+			public	$status			= array('open');
+			public	$order_by		= array('entry_date','title');
+			public	$sort			= array();
+			public	$total_rows		= 0;
 			public	$query_strings		= FALSE;
 			public	$tagdata;
-			public	$base_url			= '';
+			public	$base_url		= '';
 			public	$display_pages		= TRUE;
 			
 			
@@ -78,17 +78,15 @@
 													'month'	=>	NULL,
 													'day'	=>	NULL
 												);
-			private	$field_data			= array();
+			private	$field_data		= array();
 			private	$field_params		= array();
-			private	$where				= array();
-			private $select				= array();
+			private	$where			= array();
+			private $select			= array();
 			
 		
 			public function __construct()
 			{
-				
-				
-				
+
 				// Will we allow query strings?
 				$this->query_strings	= ee()->TMPL->fetch_param('query_strings',FALSE);
 				
@@ -179,8 +177,6 @@
 						    $this->field_params[$row] = ee()->input->get($row,TRUE);
 						    $this->base_url.= $row.'='.$this->field_params[$row].'&';
 						}
-						
-						
 
 					}
 					
