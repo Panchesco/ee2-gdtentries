@@ -32,12 +32,12 @@
 /**
  * Good at Entries Plugin
  *
- * @package			ExpressionEngine
+ * @package		ExpressionEngine
  * @subpackage		third_party
  * @category		Plugin
- * @author			Richard Whitmer/Godat Design, Inc.
+ * @author		Richard Whitmer/Godat Design, Inc.
  * @copyright		Copyright (c) 2014, Godat Design, Inc.
- * @link			http://godatdesign.com
+ * @link		http://godatdesign.com
  */
   
  // ------------------------------------------------------------------------
